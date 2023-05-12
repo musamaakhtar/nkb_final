@@ -18,6 +18,7 @@ const TechnicianSchema = new Schema({
   }, 
   city:{ type: Schema.Types.ObjectId, ref: 'city' },
   category:{ type: Schema.Types.ObjectId, ref: 'service' },
+  pincode:{ type: Schema.Types.ObjectId, ref: 'pincode' },
   rating:{
     type:Number,
     default:0

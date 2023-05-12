@@ -12,10 +12,13 @@ const addCity = async (req, res) => {
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("city") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"City not allowed"}) 
+         }
         // check if the city exists or not
         let city = await City.findOne({ name });
         if (city) {
@@ -57,10 +60,13 @@ const getAllCity = async (req, res) => {
         else if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("city") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"City not allowed"}) 
+             }
         }
         else if (req.myapp) {
             appId = req.myapp;
@@ -94,6 +100,9 @@ const updateACity = async (req, res) => {
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("city") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"City not allowed"}) 
+         }
         // checkig if the city exists or not
         let city = await City.findById(cityId);
         if (!city) {
@@ -131,6 +140,9 @@ const deleteACity = async (req, res) => {
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("city") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"City not allowed"}) 
+         }
         // checking if the user exists or not
         let city = await City.findById(cityId);
         if (!city) {

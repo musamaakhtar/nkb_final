@@ -6,8 +6,21 @@ const SuperAdminSchema = new Schema({
   name:{
     type:String,
     required:true,
+    unique:true
   },
-  
+  phone:{
+    type:String,
+    required:true,
+    unique:true
+  },
+
+  email:{
+    type:String,
+    required:true,
+    unique:true
+  },
+
+  role:{ type: Schema.Types.ObjectId, ref: 'role' },
   password:{
     type:String,
     required:true,

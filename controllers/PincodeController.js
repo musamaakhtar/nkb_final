@@ -12,10 +12,13 @@ const addPincode = async (req, res) => {
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("pincode") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"Pincode not allowed"}) 
+         }
         // check if the pincode exists or not
         let pincode = await Pincode.findOne({ code });
         if (pincode) {
@@ -64,10 +67,13 @@ const getAllPincode = async (req, res) => {
         else if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("pincode") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Pincode not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -108,10 +114,13 @@ const getPincodeByCity = async (req, res) => {
         else if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate("role");
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("pincode") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Pincode not allowed"}) 
+             }
         }
         else if (req.myapp) {
             appId = req.myapp;
@@ -141,10 +150,13 @@ const updateAPincode = async (req, res) => {
     try { 
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate("role");
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("pincode") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"pincode not allowed"}) 
+         }
         
         // check if the city exists or not
         let newCity = await City.findById(city);
@@ -188,10 +200,13 @@ const deleteAPincode = async (req, res) => {
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("pincode") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"pincode not allowed"}) 
+         }
         // checking if the user exists or not
         let pincode = await Pincode.findById(pincodeId);
         if (!pincode) {

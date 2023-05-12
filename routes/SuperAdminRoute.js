@@ -12,7 +12,7 @@ router.get("/", fetchall, getAdmin)
 
 
 // Router 3 : Update an existing admin using PUT "/api/super-admin"
-router.put("/", fetchall, updateAdmin)
+router.put("/:id", fetchall, updateAdmin)
 
 
 // admin login  "/api/super-admin/login"

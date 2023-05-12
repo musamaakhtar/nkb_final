@@ -4,38 +4,55 @@ const Service = require('../models/ServiceModel');
 const SuperAdmin = require('../models/SuperAdminModel');
 const Technician = require('../models/TechnicianModel');
 const User = require('../models/UserModel');
+const Pincode = require('../models/PincodeModel');
+const City = require('../models/CityModel');
 
 const addService = async (req, res) => {
     let success = false;
-    const { name } = req.body;
+    const { name, pincode, city } = req.body;
     try {
-        let  superAdminId;
+        let superAdminId;
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Service not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
         }
-        if (!req.file){
-            return res.status(400).json({success , message:"You have to upload an image"})
+        if (!req.file) {
+            return res.status(400).json({ success, message: "You have to upload an image" })
         }
         // check if the service exists or not
         let service = await Service.findOne({ name });
         if (service) {
             return res.status(400).json({ success, message: "There is already one service with this name" })
         }
+
+        // checking if pincode or city exists
+        let newPincode = await Pincode.findById(pincode);
+        if (!newPincode) {
+            return res.status(404).json({ success, message: "No pincode found" })
+        }
+        let newCity = await City.findById(city);
+        if (!newCity) {
+            return res.status(404).json({ success, message: "No city found" })
+        }
         service = await Service.create({
             name,
-            icon:`${process.env.HOST}/static/images/services/${req.file.filename}`,
+            pincode,
+            city,
+            icon: `${process.env.HOST}/static/images/services/${req.file.filename}`,
             date: new Date().getTime()
         })
         success = true;
-        return res.json({ success, message:service });
+        return res.json({ success, message: service });
     } catch (error) {
         console.error(error.message);
         return res.status(500).json({ success, message: "internal server error" });
@@ -46,7 +63,7 @@ const getAllService = async (req, res) => {
     let success = false;
     const { query, page, size } = req.query;
     try {
-        let userId, technicianId , superAdminId , appId;
+        let userId, technicianId, superAdminId, appId;
         if (req.user) {
             userId = req.user;
             //check if the user exists or not
@@ -66,10 +83,13 @@ const getAllService = async (req, res) => {
         else if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Service not allowed"}) 
+             }
         }
         else if (req.myapp) {
             appId = req.myapp;
@@ -81,8 +101,19 @@ const getAllService = async (req, res) => {
             return res.status(401).json({ success, message: "No valid token found" })
         }
         const pattern = `${query}`
-        const noOfServices = (await Service.find({ name: { $regex: pattern } })).length
-        const services = await Service.find({ name: { $regex: pattern } }).limit(size).skip(size * page);
+        let noOfServices;
+        let services;
+        if (req.user) {
+            let userId = req.user;
+            let user = await User.findById(userId);
+            noOfServices = (await Service.find({$and:[{ name: { $regex: pattern } },{city:user.city.toString()},{pincode:user.pincode.toString()}]})).length
+            services = await Service.find({$and:[{ name: { $regex: pattern } },{city:user.city.toString()},{pincode:user.pincode.toString()}]}).populate(["city" , "pincode"]).limit(size).skip(size * page);
+        }
+        else {
+            noOfServices = (await Service.find({ name: { $regex: pattern } })).length
+            services = await Service.find({ name: { $regex: pattern } }).populate(["city" , "pincode"]).limit(size).skip(size * page);
+        }
+
         success = true;
         return res.json({ success, message: { services, noOfServices } });
     } catch (error) {
@@ -93,22 +124,25 @@ const getAllService = async (req, res) => {
 
 const updateAService = async (req, res) => {
     let success = false;
-    const { name } = req.body;
-    const {serviceId} = req.params;
+    const { name, pincode, city } = req.body;
+    const { serviceId } = req.params;
 
-    try {   
+    try {
         let superAdminId;
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Service not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
-        }     
+        }
         // checkig if the service exists or not
         let service = await Service.findById(serviceId);
         if (!service) {
@@ -116,18 +150,30 @@ const updateAService = async (req, res) => {
         }
 
         // checking if there is an service with this name or not
-        service = await Service.findOne({name});
-        if (service && service._id.toString()!==serviceId.toString()) {
+        service = await Service.findOne({ name });
+        if (service && service._id.toString() !== serviceId.toString()) {
             return res.status(400).json({ success, message: "There is already a service exists with this name" })
         }
 
         // creating a new service object
         let newService = {};
-        if(name){newService.name = name}        
-        if(req.file){newService.icon = `${process.env.HOST}/static/images/services/${req.file.filename}`}    
+        if (name) { newService.name = name }
+        if (req.file) { newService.icon = `${process.env.HOST}/static/images/services/${req.file.filename}` }
+        if (pincode) {
+            let newPincode = await Pincode.findById(pincode);
+            if (newPincode) {
+                newService.pincode = pincode
+            }
+        }
+        if (city) {
+            let newCity = await City.findById(city);
+            if (newCity) {
+                newService.city = city
+            }
+        }
 
         service = await Service.findByIdAndUpdate(serviceId, { $set: newService }, { new: true });
-        
+
         success = true;
         return res.json({ success, message: service });
     } catch (error) {
@@ -138,17 +184,20 @@ const updateAService = async (req, res) => {
 
 const deleteAService = async (req, res) => {
     let success = false;
-    const {serviceId} = req.params;
+    const { serviceId } = req.params;
 
     try {
         let superAdminId;
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Service not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -159,7 +208,7 @@ const deleteAService = async (req, res) => {
             return res.status(404).json({ success, message: "Not found" })
         }
         service = await Service.findByIdAndDelete(serviceId);
-        
+
         success = true;
         return res.json({ success, message: service });
     } catch (error) {

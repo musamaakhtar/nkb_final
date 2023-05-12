@@ -10,7 +10,9 @@ const ServiceSchema = new Schema({
   icon: {
     type: String,
     required:true
-  },  
+  },
+  city:{ type: Schema.Types.ObjectId, ref: 'city' },
+  pincode:{ type: Schema.Types.ObjectId, ref: 'pincode' },  
 
   date:{
     type:Number,

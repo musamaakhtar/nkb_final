@@ -1,5 +1,5 @@
 const express = require("express");
-const { addBooking , getAllBooking , updateABooking , deleteABooking, getUserSpecificBooking, getABookingDetails} = require("../controllers/BookingController");
+const { addBooking , getAllBooking , updateABooking , deleteABooking, getUserSpecificBooking, getABookingDetails, generateReport} = require("../controllers/BookingController");
 const router = express.Router();
 const fetchall = require("../middlewares/fetchall");
 const {upload} = require("../utilities/multerSetup")
@@ -16,6 +16,9 @@ router.get("/all",fetchall, getAllBooking)
 
 // Router-3 : getting booking of a specific user
 router.get("/",fetchall, getUserSpecificBooking)
+
+// Router-3 : getting booking of a specific user
+router.get("/generate-report/:bookingId", generateReport)
 
 
 // Router-3 : getting details of a booking

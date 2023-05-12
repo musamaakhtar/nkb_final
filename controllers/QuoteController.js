@@ -29,6 +29,10 @@ const addQuote = async (req, res) => {
         if(!booking){
             return res.status(404).json({success , message:"Booking not found"})
         }
+
+        if(booking.selectedQuote){
+            return res.status(400).json({success , message:"This booking is already assigned to another technician"})
+        }
         // check if the technician quote in this booking or not
         let quote = await Quote.findOne({$and:[{booking:bookingId},{technician:technicianId}]})
         if(quote){
@@ -58,10 +62,13 @@ const getAllQuote = async (req, res) => {
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("booking") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Booking not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -116,10 +123,14 @@ const getAllQuoteOfABooking = async (req, res) => {
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("booking") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Booking not allowed"}) 
+             }
+            
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -145,10 +156,13 @@ const approveAQuoteByAdmin = async (req, res) => {
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("booking") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Booking not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })

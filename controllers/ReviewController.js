@@ -56,10 +56,13 @@ const getAllReview = async (req, res) => {
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("booking") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Booking not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })

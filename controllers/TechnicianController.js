@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const Technician = require('../models/TechnicianModel');
 const City = require('../models/CityModel');
+const Pincode = require('../models/PincodeModel');
 const Service = require('../models/ServiceModel');
 const Rating = require('../models/RatingModel');
 const Review = require('../models/ReviewModel');
@@ -45,7 +46,7 @@ const loginTechnician = async (req, res) => {
 
 const addTechnician = async (req, res) => {
     let success = false;
-    const { name, phone, city, category } = req.body;
+    const { name, phone, city,pincode, category } = req.body;
     try {
         const app = req.myapp;
         if (app!=="nkb") {
@@ -65,10 +66,25 @@ const addTechnician = async (req, res) => {
             return res.status(400).json({success , message:"Sorry this number already used"})
         }
 
+        // check if city , pincode and category exists
+        let newCity = await City.findById(city);
+        if(!newCity){
+            return res.status(404).json({success , message:"City not found"})
+        }
+        let newPincode = await Pincode.findById(pincode);
+        if(!newPincode){
+            return res.status(404).json({success , message:"Pincode not found"})
+        }
+        let newCategory = await Service.findById(category);
+        if(!newCategory){
+            return res.status(404).json({success , message:"Category not found"})
+        }
+
         technician = await Technician.create({
             name,
             phone,
             city,
+            pincode,
             category,
             date:new Date().getTime()
         })
@@ -90,10 +106,13 @@ const getTechnician = async (req, res) => {
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("technician") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Technician not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -144,14 +163,14 @@ const getBookingsByTechnician = async (req, res) => {
         }
         let bookings;
         if(status && status==="In-Progress"){
-            bookings = await Booking.find({$and:[{city:technician.city},{service:technician.category}]}).populate(["pincode"])
+            bookings = await Booking.find({$and:[{pincode:technician.pincode},{service:technician.category}]}).populate(["pincode","time"])
             bookings = bookings.filter(booking=> !booking.technicians.includes(id))
         }
         else if(status){
-            bookings = await Booking.find({$and:[{technician:id},{status:status}]}).populate(["pincode"])
+            bookings = await Booking.find({$and:[{technician:id},{status:status}]}).populate(["pincode","time"])
         }
         else{
-            bookings = await Booking.find({$and:[{city:technician.city},{service:technician.category}]}).populate(["pincode"])
+            bookings = await Booking.find({$and:[{pincode:technician.pincode},{service:technician.category}]}).populate(["pincode","time"])
         }
         
         // .select["pincode" , "bookingDate" , "time" , "description"]
@@ -178,7 +197,7 @@ const getQuotedBookingsByTechnician = async (req, res) => {
         let quotes = await Quote.find({$and:[{technician:id},{status:"Pending"}]})
         for (let index = 0; index < quotes.length; index++) {
             const quote = quotes[index];
-            let booking = await Booking.findById(quote.booking).populate(["pincode"])
+            let booking = await Booking.findById(quote.booking).populate(["pincode","time"])
             booking = {...booking._doc , price:quote.price}
             bookings.push(booking)
         }
@@ -200,10 +219,13 @@ const getTechnicianByIdInAdmin = async (req, res) => {
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("technician") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Technician not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -224,7 +246,7 @@ const getTechnicianByIdInAdmin = async (req, res) => {
 
 const updateTechnician = async (req, res) => {
     let success = false;
-    const { name, city, category   } = req.body;
+    const { name, city, category ,pincode  } = req.body;
     const {technicianId} = req.params;
 
     try {
@@ -232,10 +254,13 @@ const updateTechnician = async (req, res) => {
         if(req.superAdmin){
             superAdminId = req.superAdmin
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("technician") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Technician not allowed"}) 
+             }
         }
         else if(req.technician){
             id = req.technician;
@@ -274,6 +299,13 @@ const updateTechnician = async (req, res) => {
                 newTechnician.category = category
             }
         }
+        if (pincode) {
+            // check if the category exists or not
+            let newPincode = await Pincode.findById(pincode);
+            if (newPincode) {
+                newTechnician.pincode = pincode
+            }
+        }
         
 
         technician = await Technician.findByIdAndUpdate(technicianId, { $set: newTechnician }, { new: true });
@@ -296,10 +328,13 @@ const approveATechnician = async (req, res) => {
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("technician") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Technician not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -330,10 +365,13 @@ const {technicianId} = req.params;
         if(req.superAdmin){
             superAdminId = req.superAdmin
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["technician"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("technician") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Technician not allowed"}) 
+             }
         }
         else if(req.technician){
             id = req.technician;

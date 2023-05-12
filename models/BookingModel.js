@@ -7,10 +7,7 @@ const BookingSchema = new Schema({
     type: Number,
     required:true
   },
-  time: {
-    type: String,
-    required:true
-  },
+  time:{ type: Schema.Types.ObjectId, ref: 'timeSlot' },
   user:{ type: Schema.Types.ObjectId, ref: 'user' }, 
   technician:{ type: Schema.Types.ObjectId, ref: 'technician' }, 
   technicians:[{ type: Schema.Types.ObjectId, ref: 'technician' }],
@@ -50,6 +47,10 @@ const BookingSchema = new Schema({
     default:""
   },
   verifyId:{
+    type:String,
+    default:""
+  },
+  pdf:{
     type:String,
     default:""
   },

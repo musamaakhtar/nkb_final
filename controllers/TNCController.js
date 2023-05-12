@@ -12,10 +12,13 @@ const addTerm = async (req, res) => {
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("tnc") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"TNC not allowed"}) 
+         }
     
         let tnc = await TNC.create({
             details,
@@ -53,10 +56,13 @@ const getAllTerms = async (req, res) => {
         else if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
+            if(!superAdmin.role.roles.includes("tnc") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"TNC not allowed"}) 
+             }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -79,10 +85,13 @@ const updateATerm = async (req, res) => {
     try {  
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
-        }      
+        }
+        if(!superAdmin.role.roles.includes("tnc") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"TNC not allowed"}) 
+         }      
         // checkig if the city exists or not
         let tnc = await TNC.findById(tncId);
         if (!tnc) {
@@ -110,10 +119,13 @@ const deleteATerm = async (req, res) => {
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
+        if(!superAdmin.role.roles.includes("tnc") && superAdmin.role.name!=="Admin"){
+            return res.status(400).json({success , message:"Tnc not allowed"}) 
+         }
         // checking if the user exists or not
         let tnc = await TNC.findById(tncId);
         if (!tnc) {
