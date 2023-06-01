@@ -10,12 +10,13 @@ const Booking = require('../models/BookingModel');
 const SuperAdmin = require('../models/SuperAdminModel');
 const User = require('../models/UserModel');
 const Quote = require('../models/QuoteModel');
+const { default: axios } = require('axios');
 
 
 
 const loginTechnician = async (req, res) => {
     let success = false;
-    const { phone } = req.body;
+    const { phone , otp } = req.body;
     try {
         const app = req.myapp;
         if (app!=="nkb") {
@@ -24,11 +25,8 @@ const loginTechnician = async (req, res) => {
         // check if the technician exists or not
         let technician = await Technician.findOne({ phone });
 
-        if (!technician) {
-            return res.status(404).json({ success, message: "Sorry you do not have any account" })
-        };
-        if (!technician.isApproved) {
-            return res.status(400).json({ success, message: "Sorry your account is not approved yet by admin" })
+        if(technician.otp !== parseInt(otp)){
+            return res.status(400).json({success , message:"Please enter correct otp"})
         }
 
         // creating jwt token
@@ -98,6 +96,39 @@ const addTechnician = async (req, res) => {
 
 }
 
+const sendOTPToTechnician = async (req, res) => {
+    let success = false;
+    const { phone } = req.body;
+    try {
+        const app = req.myapp;
+        if (app!=="nkb") {
+            return res.status(401).json({ success, message: "Token wrong" })
+        }
+        // check if the technician exists or not
+        let technician = await Technician.findOne({ phone });
+
+        if (!technician) {
+            return res.status(404).json({ success, message: "Sorry you do not have any account" })
+        };
+        if (!technician.isApproved) {
+            return res.status(400).json({ success, message: "Sorry your account is not approved yet by admin" })
+        }
+
+        let {data} = await axios.get(`https://2factor.in/API/V1/f1611593-0712-11eb-9fa5-0200cd936042/SMS/+91${phone}/AUTOGEN2/OTP1`);
+        // update the otp of the user
+        await Technician.findOneAndUpdate({ phone } , {$set:{otp:data.OTP}} , {new:true});
+
+
+
+        success = true;
+        return res.json({ success, message:"otp sent successfully" });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "internal server error" });
+    }
+
+}
+
 const getTechnician = async (req, res) => {
     let success = false;
     const { query, page, size } = req.query;
@@ -120,7 +151,7 @@ const getTechnician = async (req, res) => {
 
         const pattern = `${query}`
         const noOfTechnicians = (await Technician.find({ phone: { $regex: pattern } })).length
-        const technicians = await Technician.find({ phone: { $regex: pattern } }).populate(["city" , "category"]).limit(size).skip(size * page);
+        const technicians = await Technician.find({ phone: { $regex: pattern } }).populate(["city" , "category","pincode"]).limit(size).skip(size * page);
         success = true;
         return res.json({ success, message: { technicians, noOfTechnicians } });
     } catch (error) {
@@ -163,14 +194,14 @@ const getBookingsByTechnician = async (req, res) => {
         }
         let bookings;
         if(status && status==="In-Progress"){
-            bookings = await Booking.find({$and:[{pincode:technician.pincode},{service:technician.category}]}).populate(["pincode","time"])
+            bookings = await Booking.find({$and:[{pincode:technician.pincode},{service:technician.category},{isApproved:{$ne:false}}]}).populate(["pincode","time"])
             bookings = bookings.filter(booking=> !booking.technicians.includes(id))
         }
         else if(status){
-            bookings = await Booking.find({$and:[{technician:id},{status:status}]}).populate(["pincode","time"])
+            bookings = await Booking.find({$and:[{technician:id},{status:status},{isApproved:{$ne:false}}]}).populate(["pincode","time"])
         }
         else{
-            bookings = await Booking.find({$and:[{pincode:technician.pincode},{service:technician.category}]}).populate(["pincode","time"])
+            bookings = await Booking.find({$and:[{pincode:technician.pincode},{service:technician.category},{isApproved:{$ne:false}}]}).populate(["pincode","time"])
         }
         
         // .select["pincode" , "bookingDate" , "time" , "description"]
@@ -365,7 +396,7 @@ const {technicianId} = req.params;
         if(req.superAdmin){
             superAdminId = req.superAdmin
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["technician"]);
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
@@ -397,4 +428,4 @@ const {technicianId} = req.params;
     }
 }
 
-module.exports = { loginTechnician, addTechnician, getTechnician, getTechnicianById,getBookingsByTechnician,getQuotedBookingsByTechnician, getTechnicianByIdInAdmin, updateTechnician, approveATechnician, deleteTechnician } 
+module.exports = { loginTechnician, addTechnician,sendOTPToTechnician, getTechnician, getTechnicianById,getBookingsByTechnician,getQuotedBookingsByTechnician, getTechnicianByIdInAdmin, updateTechnician, approveATechnician, deleteTechnician } 

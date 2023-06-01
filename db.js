@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 
 
-// const  mongoURI = "mongodb+srv://bhattacharjeesolution:bhattacharjeesolution@cluster0.otfdv7w.mongodb.net/nkb";
-const  mongoURI = "mongodb://localhost:27017/nkb";
+const  mongoURI = "mongodb+srv://bhattacharjeesolution:bhattacharjeesolution@cluster0.otfdv7w.mongodb.net/nkb";
+// const  mongoURI = "mongodb://localhost:27017/nkb";
 
 
 

@@ -20,6 +20,10 @@ const UserSchema = new Schema({
   pincode:{ type: Schema.Types.ObjectId, ref: 'pincode' }, 
   ratings:[{ type: Schema.Types.ObjectId, ref: 'rating' }],
   reviews:[{ type: Schema.Types.ObjectId, ref: 'review' }],
+  otp:{
+    type:Number,
+    default:0
+  },
   date:{
     type:Number,
     required:true

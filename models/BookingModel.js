@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const BookingSchema = new Schema({
-
+  
   bookingDate: {
     type: Number,
     required:true
@@ -25,6 +25,10 @@ const BookingSchema = new Schema({
   status:{
     type:String,
     default:"In-Progress"  // Wating , Assigned , Started , Completed , Cancelled
+  },
+  isApproved:{
+    type:Boolean,
+    default:true
   },
   otp:{
     type:String,
@@ -53,8 +57,7 @@ const BookingSchema = new Schema({
   pdf:{
     type:String,
     default:""
-  },
-  
+  },  
   date:{
     type:Number,
     required:true

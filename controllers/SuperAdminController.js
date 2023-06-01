@@ -67,9 +67,27 @@ const getAdmin = async (req, res) => {
             return res.status(400).json({ success, message: "You are not allowed to get admin details" })
         }
 
-        superAdmin = await SuperAdmin.find().select(["-name", "-password", "-phone", "-email"]);
+        superAdmin = await SuperAdmin.find().populate(["role"]);
         success = true;
-        return res.json({ success, message: superAdmin[0] });
+        return res.json({ success, message: superAdmin });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+const getASingleAdmin = async (req, res) => {
+    let success = false;
+    try {
+
+        let superAdminId = req.superAdmin;
+        // checkig if the admin exists or not
+        let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(401).json({ success, message: "You are not allowed to get admin details" })
+        }
+        success = true;
+        return res.json({ success, message: superAdmin });
     } catch (error) {
         console.error(error.message);
         return res.status(500).json({ success, message: "Internal server error" });
@@ -78,12 +96,12 @@ const getAdmin = async (req, res) => {
 
 const updateAdmin = async (req, res) => {
     let success = false;
-    const { name, password, phone, email } = req.body;
+    const { name, password, phone, email , role } = req.body;
     const { id } = req.params;
     try {
 
         let superAdminId = req.superAdmin;
-        // checkig if the admin exists or not
+        // checking if the admin exists or not
         let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
         if (!superAdmin) {
             return res.status(401).json({ success, message: "You are not allowed to update admin details" })
@@ -94,7 +112,7 @@ const updateAdmin = async (req, res) => {
 
         //checking if any superadmin exists with this name , phone or email
 
-        
+
 
         // creating the salt
         const salt = await bcrypt.genSalt(10);
@@ -102,7 +120,7 @@ const updateAdmin = async (req, res) => {
         const newAdmin = {};
         if (name) {
             let newSuperAdmin = await SuperAdmin.findOne({ name })
-            if (newSuperAdmin && newSuperAdmin._id.toString() !== id.toString) {
+            if (newSuperAdmin && newSuperAdmin._id.toString() !== id.toString()) {
                 return res.status(400).json({ success, message: "This name already taken" })
             }
             newAdmin.name = name
@@ -113,21 +131,57 @@ const updateAdmin = async (req, res) => {
         };
         if (email) {
             let newSuperAdmin = await SuperAdmin.findOne({ email })
-            if (newSuperAdmin && newSuperAdmin._id.toString() !== id.toString) {
+            if (newSuperAdmin && newSuperAdmin._id.toString() !== id.toString()) {
                 return res.status(400).json({ success, message: "This email already taken" })
             }
             newAdmin.email = email;
         }
-        if(phone){
+        if (phone) {
             let newSuperAdmin = await SuperAdmin.findOne({ phone })
-            if (newSuperAdmin && newSuperAdmin._id.toString() !== id.toString) {
+            if (newSuperAdmin && newSuperAdmin._id.toString() !== id.toString()) {
                 return res.status(400).json({ success, message: "This number already taken" })
             }
             newAdmin.phone = phone;
         }
+        if(role){
+            let newRole = await Role.findById(role);
+            if(!newRole){
+                return res.status(404).json({success , message:"Role not found"})
+            }
+            newAdmin.role= role
+        }
+
+        
+        superAdmin = await SuperAdmin.findByIdAndUpdate(id, { $set: newAdmin }, { new: true });
+        success = true;
+        return res.json({ success, message: superAdmin });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
 
 
-        superAdmin = await SuperAdmin.findByIdAndUpdate(superAdminId, { $set: newAdmin }, { new: true });
+const deleteAdmin = async (req, res) => {
+    let success = false;
+    const { id } = req.params;
+    try {
+
+        let superAdminId = req.superAdmin;
+        // checking if the admin exists or not
+        let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(401).json({ success, message: "You are not allowed to update delete details" })
+        }
+        if (superAdmin.role.name.toString() !== "Admin" && superAdminId.toString() !== id.toString()) {
+            return res.status(400).json({ success, message: "You are not allowed to delete admin details" })
+        }
+
+        if(superAdminId.toString()===id.toString()){
+            return res.status(400).json({success , message:"Main admin can not be deleted"})
+        }
+        
+        superAdmin = await SuperAdmin.findByIdAndDelete(id);
         success = true;
         return res.json({ success, message: superAdmin });
     } catch (error) {
@@ -175,4 +229,4 @@ const login = async (req, res) => {
 
 
 
-module.exports = { add, getAdmin, updateAdmin, login }  
+module.exports = { add, getAdmin,getASingleAdmin, updateAdmin, login , deleteAdmin }  

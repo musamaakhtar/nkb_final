@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const axios = require('axios');
 const User = require('../models/UserModel');
 const City = require('../models/CityModel');
 const Pincode = require('../models/PincodeModel');
@@ -9,8 +10,7 @@ const SuperAdmin = require('../models/SuperAdminModel');
 const Technician = require('../models/TechnicianModel');
 
 
-
-const loginUser = async (req, res) => {
+const sendOTPToUser = async (req, res) => {
     let success = false;
     const { phone } = req.body;
     try {
@@ -27,11 +27,42 @@ const loginUser = async (req, res) => {
             if(technician){
                 return res.status(400).json({success , message:"Sorry this number already used"})
             }
+
+
             user = await User.create({
                 phone,
                 date:new Date().getTime()
             })
         };
+
+        let {data} = await axios.get(`https://2factor.in/API/V1/f1611593-0712-11eb-9fa5-0200cd936042/SMS/+91${phone}/AUTOGEN2/OTP1`);
+        // update the otp of the user
+        await User.findOneAndUpdate({ phone } , {$set:{otp:data.OTP}} , {new:true});
+
+
+
+        success = true;
+        return res.json({ success, message:"otp sent successfully" });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "internal server error" });
+    }
+
+}
+
+const loginUser = async (req, res) => {
+    let success = false;
+    const { phone , otp } = req.body;
+    try {
+        const app = req.myapp;
+        if (app!=="nkb") {
+            return res.status(401).json({ success, message: "Token wrong" })
+        }
+        // check if the user exists or not
+        let user = await User.findOne({ phone });
+        if(user.otp !== parseInt(otp)){
+            return res.status(400).json({success , message:"Please enter correct otp"})
+        }
 
         // creating jwt token
         const data = { user: user._id };
@@ -238,4 +269,4 @@ const deleteUser = async (req, res) => {
     }
 }
 
-module.exports = { loginUser, getUser, getUserById, getUserByIdInAdmin, updateUser, deleteUser } 
+module.exports = { loginUser, getUser, getUserById, getUserByIdInAdmin, updateUser, deleteUser , sendOTPToUser } 

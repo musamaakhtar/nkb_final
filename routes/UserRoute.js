@@ -1,11 +1,12 @@
 const express = require("express");
-const { loginUser,getUser , getUserById,getUserByIdInAdmin, updateUser, deleteUser} = require("../controllers/UserController");
+const { loginUser,getUser , getUserById,getUserByIdInAdmin, updateUser, deleteUser, sendOTPToUser} = require("../controllers/UserController");
 const router = express.Router();
 const fetchall = require("../middlewares/fetchall");
 const {upload} = require("../utilities/multerSetup")
 
 const userUpload = upload("users")
 
+router.post("/send-otp",fetchall, sendOTPToUser)
 // Router-1 : adding an user using POST  "api/user" 
 router.post("/login",fetchall, loginUser)
 
@@ -17,7 +18,6 @@ router.get("/:id",fetchall, getUserByIdInAdmin)
 
 // Router 3 : getting a specific user details using "/api/user"
 router.get("/",fetchall, getUserById)
-
 
 // Router 4 : Update an existing user using PUT "/api/user"
 router.put("/:userId",fetchall, userUpload.single("image"), updateUser)

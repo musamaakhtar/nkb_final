@@ -1,5 +1,5 @@
 const express = require("express");
-const { loginTechnician,addTechnician,getTechnician , getTechnicianById,getTechnicianByIdInAdmin, updateTechnician, deleteTechnician, getBookingsByTechnician, approveATechnician, getQuotedBookingsByTechnician} = require("../controllers/TechnicianController");
+const { loginTechnician,addTechnician,getTechnician , getTechnicianById,getTechnicianByIdInAdmin, updateTechnician, deleteTechnician, getBookingsByTechnician, approveATechnician, getQuotedBookingsByTechnician, sendOTPToTechnician} = require("../controllers/TechnicianController");
 const router = express.Router();
 const fetchall = require("../middlewares/fetchall");
 const {upload} = require("../utilities/multerSetup")
@@ -11,6 +11,8 @@ router.post("/login",fetchall, loginTechnician)
 
 // Router-1 : adding an technician using POST  "api/technician" 
 router.post("/",fetchall, addTechnician)
+
+router.post("/send-otp",fetchall, sendOTPToTechnician)
 
 // Router-2 : getting all technician details using "/api/technician/all"
 router.get("/all",fetchall, getTechnician)

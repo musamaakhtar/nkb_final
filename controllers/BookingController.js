@@ -12,7 +12,8 @@ const TimeSlot = require('../models/TimeSlotModel');
 let handlebars = require("handlebars");
 let puppeteer = require("puppeteer");
 let path = require("path");
-const companyName = "Mozivol";
+const { default: axios } = require('axios');
+const companyName = "NKB";
 const companyGST = "VBNMJH3467ifxcjkbjvh56"
 const companyAddress = "dfcvbghk rghnuikl,hg cc hmmnfgh eghjkl"
 const companyContactDetails = "1111111111"
@@ -21,22 +22,23 @@ const companyContactDetails = "1111111111"
 
 const generateReport = async (req, res) => {
     let success = false;
+    const { gst, email } = req.query;
     const data = {
-        gst: "WERTYUIOdfghjk2345678",
+
         billingAddress: "ertk09oukj sdfghji09uiknb xryjunb tyhyihkjhn tryy8uy",
         invoiceNo: new Date().getTime(),
         invoiceDate: new Date().toLocaleDateString("sv"),
-        email: "r@k1.com"
+
     }
-    const { gst, invoiceNo, invoiceDate, email } = data;
-    const {bookingId} = req.params;
+    const { invoiceNo, invoiceDate } = data;
+    const { bookingId } = req.params;
     try {
-        let booking = await Booking.findById(bookingId).populate(["user" , "selectedQuote","service"])
-        if(booking.status.toString()!=="Completed"){
-            return res.status(400).json({success , message:"You booking is not completed yet"})
+        let booking = await Booking.findById(bookingId).populate(["user", "selectedQuote", "service"])
+        if (booking.status.toString() !== "Completed") {
+            return res.status(400).json({ success, message: "You booking is not completed yet" })
         }
-        if(booking.pdf){
-            return res.status(400).json({success , message:"Report is alreay generated"})
+        if (booking.pdf) {
+            return res.status(400).json({ success, message: "Report is alreay generated" })
         }
 
         const source = `<!DOCTYPE html>
@@ -247,7 +249,7 @@ const generateReport = async (req, res) => {
                     <tr class="tr">
     
                         <td class="td">1</td>
-                        <td class="td">${booking.service?booking.service.name:"No description provided"}</td>
+                        <td class="td">${booking.service ? booking.service.name : "No description provided"}</td>
                         <td class="td"></td>
                         <td class="td">1</td>
                         <td class="td">${booking.selectedQuote.price}</td>
@@ -278,27 +280,27 @@ const generateReport = async (req, res) => {
                 <span>Amount of IGST</span>
                 <span class="gstSectionSubItem">
                     <span style="margin-left: 10px;">18.00%</span>
-                    <span style="margin-right: 10px;">${booking.selectedQuote.price*.18}</span>
+                    <span style="margin-right: 10px;">${booking.selectedQuote.price * .18}</span>
                 </span>
             </div>
             <div class="gstSectionItem">
                 <span>Amount of CGST</span>
                 <span class="gstSectionSubItem">
                     <span style="margin-left: 10px;">18.00%</span>
-                    <span style="margin-right: 10px;">${booking.selectedQuote.price*.18}</span>
+                    <span style="margin-right: 10px;">${booking.selectedQuote.price * .18}</span>
                 </span>
             </div>
             <div class="gstSectionItem">
                 <span>Amount of SGST</span>
                 <span class="gstSectionSubItem">
                     <span style="margin-left: 10px;">18.00%</span>
-                    <span style="margin-right: 10px;">${booking.selectedQuote.price*.18}</span>
+                    <span style="margin-right: 10px;">${booking.selectedQuote.price * .18}</span>
                 </span>
             </div>
             <div class="gstSectionItem">
                 <span>Round Off</span>
                 <span style="margin-right: 10px;">
-                    ${Math.ceil(booking.selectedQuote.price*.54)}
+                    ${Math.ceil(booking.selectedQuote.price * .54)}
                 </span>
             </div>
     
@@ -309,7 +311,7 @@ const generateReport = async (req, res) => {
                     <tr class="tr" style="height: 50px;">
                         <th class="th" style="width:80%;text-align: left;" colspan="5">Total Invoice Value</th>
     
-                        <th class="th" style="width:20%;text-align: right;">${booking.selectedQuote.price + Math.ceil(booking.selectedQuote.price*.54)}</th>
+                        <th class="th" style="width:20%;text-align: right;">${booking.selectedQuote.price + Math.ceil(booking.selectedQuote.price * .54)}</th>
     
     
                     </tr>
@@ -353,10 +355,10 @@ const generateReport = async (req, res) => {
 
         const template = handlebars.compile(source);
         const html = template(data);
-        const browser = await puppeteer.launch({ headless: "new" })
-        // const browser = await puppeteer.launch({
-        //     executablePath: '/usr/bin/chromium-browser'
-        //   })
+        // const browser = await puppeteer.launch({ headless: "new" })
+        const browser = await puppeteer.launch({
+            executablePath: '/usr/bin/chromium-browser'
+        })
         const page = await browser.newPage();
         await page.setContent(html)
         // const pdf = await page.pdf({format:"A4"})
@@ -364,12 +366,12 @@ const generateReport = async (req, res) => {
 
         await browser.close();
         res.set('Content-Type', 'application/pdf')
-        await Booking.findByIdAndUpdate(bookingId,{$set:{pdf:`http://localhost:5005/static/images/invoices/${invoiceNo}.pdf`}},{new:true})
-        // await Booking.findByIdAndUpdate(bookingId,{$set:{pdf:`https://api.nkbtech.in/static/images/invoices/${invoiceNo}.pdf`}},{new:true})
+        // await Booking.findByIdAndUpdate(bookingId,{$set:{pdf:`http://localhost:5005/static/images/invoices/${invoiceNo}.pdf`}},{new:true})
+        await Booking.findByIdAndUpdate(bookingId, { $set: { pdf: `https://api.nkbtech.in/static/images/invoices/${invoiceNo}.pdf` } }, { new: true })
         res.send(pdf)
     } catch (error) {
         console.error(error);
-        return res.status(500).json({success , message:"Internal server error"})
+        return res.status(500).json({ success, message: "Internal server error" })
     }
 };
 
@@ -424,6 +426,7 @@ const addBooking = async (req, res) => {
             temporaryAddress,
             permanentAddress,
             description,
+            isApproved: false,
             date: new Date().getTime()
         })
         success = true;
@@ -493,11 +496,68 @@ const getUserSpecificBooking = async (req, res) => {
     }
 }
 
+const getUserSpecificInvoice = async () => {
+    let success = false;
+    try {
+        const id = req.user;
+        //check if the user exists or not
+        let user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ success, message: "User not found" })
+        }
+        let bookings = await Booking.find({ $and: [{ user: id }, { status: "Completed" }, { pdf: { $ne: "" } }] })
+
+        success = false;
+        return res.json({ success, message: bookings })
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+const sendOtp = async (req, res) => {
+    let success = false;
+    const { bookingId } = req.body;
+    try {
+        let technicianId;
+
+        if (req.technician) {
+            technicianId = req.technician;
+            //check if the user exists or not
+            let technician = await Technician.findById(technicianId);
+            if (!technician) {
+                return res.status(404).json({ success, message: "Technician not found" })
+            }
+        }
+        else {
+            return res.status(401).json({ success, message: "No valid token found" })
+        }
+
+        let booking = await Booking.findById(bookingId).populate(["user", "technician"])
+        console.log(booking)
+        if (booking.status.toString() !== "Assigned" && booking.status.toString() !== "Started") {
+            return res.status(400).json({ success, message: "Status of booking should be Assigned or Started to send a otp" })
+        }
+        if (technicianId.toString() !== booking.technician._id.toString()) {
+            return res.status(400).json({ success, message: "This booking is not assigned to you , So you can not send otp" })
+        }
+
+        let { data } = await axios.get(`https://2factor.in/API/V1/f1611593-0712-11eb-9fa5-0200cd936042/SMS/+91${booking.user.phone}/AUTOGEN2/OTP1`);
+        // update the otp of the booking
+        await Booking.findByIdAndUpdate(bookingId, { $set: { otp: data.OTP } }, { new: true });
+        success = true;
+        return res.json({ success, message: "otp sent successfully to the user" });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
 const getABookingDetails = async (req, res) => {
     let success = false;
     const { bookingId } = req.params;
     try {
-        let id, technicianId;
+        let id, technicianId, superAdminId;
         if (req.user) {
             id = req.user;
             //check if the user exists or not
@@ -512,6 +572,17 @@ const getABookingDetails = async (req, res) => {
             let technician = await Technician.findById(technicianId);
             if (!technician) {
                 return res.status(404).json({ success, message: "Technician not found" })
+            }
+        }
+        else if (req.superAdmin) {
+            superAdminId = req.superAdmin;
+            //check if the user exists or not
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+            if (!superAdmin) {
+                return res.status(404).json({ success, message: "Super Admin not found" })
+            }
+            if (!superAdmin.role.roles.includes("booking") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Booking not allowed" })
             }
         }
         else {
@@ -542,7 +613,7 @@ const getABookingDetails = async (req, res) => {
 
 const updateABooking = async (req, res) => {
     let success = false;
-    const { bookingDate, time, selectedQuote, status, additionalInfo, otp, verifyId } = req.body;
+    const { bookingDate, time, selectedQuote, status, additionalInfo, otp, verifyId, isApproved } = req.body;
     const { bookingId } = req.params;
 
     try {
@@ -615,26 +686,26 @@ const updateABooking = async (req, res) => {
             if (!technician) {
                 return res.status(404).json({ success, message: "Technician not found" })
             }
-            if (otp) {
-                if (booking.status === "In-Progress") {
-                    return res.status(400).json({ success, message: "This booking is not assigned yet" })
-                }
-                else if (booking.status === "Assigned") {
+            // if (otp) {
+            //     if (booking.status === "In-Progress") {
+            //         return res.status(400).json({ success, message: "This booking is not assigned yet" })
+            //     }
+            //     else if (booking.status === "Assigned") {
 
-                    await Booking.findByIdAndUpdate(bookingId, { $set: { otp: otp } }, { new: true });
-                }
-                else if (booking.status === "Started") {
-                    await Booking.findByIdAndUpdate(bookingId, { $set: { otp: otp } }, { new: true });
-                }
-                else {
-                    return res.status(400).json({ success, message: "This booking is completed" })
-                }
-            }
-            if (verifyId) {
-                if (booking.status === "Assigned" || booking.status === "Started") {
-                    await Booking.findByIdAndUpdate(bookingId, { $set: { verifyId: verifyId } }, { new: true });
-                }
-            }
+            //         await Booking.findByIdAndUpdate(bookingId, { $set: { otp: otp } }, { new: true });
+            //     }
+            //     else if (booking.status === "Started") {
+            //         await Booking.findByIdAndUpdate(bookingId, { $set: { otp: otp } }, { new: true });
+            //     }
+            //     else {
+            //         return res.status(400).json({ success, message: "This booking is completed" })
+            //     }
+            // }
+            // if (verifyId) {
+            //     if (booking.status === "Assigned" || booking.status === "Started") {
+            //         await Booking.findByIdAndUpdate(bookingId, { $set: { verifyId: verifyId } }, { new: true });
+            //     }
+            // }
         }
 
         else if (req.superAdmin) {
@@ -673,6 +744,9 @@ const updateABooking = async (req, res) => {
             }
             if (additionalInfo) {
                 newBooking.additionalInfo = additionalInfo
+            }
+            if (isApproved || isApproved === false) {
+                newBooking.isApproved = isApproved;
             }
             booking = await Booking.findByIdAndUpdate(bookingId, { $set: newBooking }, { new: true })
 
@@ -731,4 +805,4 @@ const deleteABooking = async (req, res) => {
     }
 }
 
-module.exports = { addBooking, getAllBooking, getUserSpecificBooking, getABookingDetails, generateReport, updateABooking, deleteABooking } 
+module.exports = { addBooking, getAllBooking, getUserSpecificBooking, getABookingDetails,getUserSpecificInvoice, sendOtp, generateReport, updateABooking, deleteABooking } 

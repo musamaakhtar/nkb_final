@@ -29,6 +29,10 @@ const TechnicianSchema = new Schema({
     type:Boolean,
     default:false
   },
+  otp:{
+    type:Number,
+    default:0
+  },
   date:{
     type:Number,
     required:true

@@ -17,7 +17,7 @@ const addTimeSlot = async (req, res) => {
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
-        if(!superAdmin.role.roles.includes("timeSlot") && superAdmin.role.name!=="Admin"){
+        if(!superAdmin.role.roles.includes("timeslots") && superAdmin.role.name!=="Admin"){
             return res.status(400).json({success , message:"Time Slot not allowed"}) 
          }
         // check if the timeSlot exists or not
@@ -77,7 +77,7 @@ const getAllTimeSlot = async (req, res) => {
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
-            if(!superAdmin.role.roles.includes("timeSlot") && superAdmin.role.name!=="Admin"){
+            if(!superAdmin.role.roles.includes("timeslots") && superAdmin.role.name!=="Admin"){
                 return res.status(400).json({success , message:"Time Slot not allowed"}) 
              }
         }
@@ -94,8 +94,17 @@ const getAllTimeSlot = async (req, res) => {
             timeSlots = await TimeSlot.find({$and:[{ time: { $regex: pattern } },{city:user.city.toString()},{pincode:user.pincode.toString()}]}).populate(["city","pincode"]).limit(size).skip(size * page);
         }
         else{
-            noOfTimeSlots = (await TimeSlot.find({ time: { $regex: pattern } })).length
-            timeSlots = await TimeSlot.find({ time: { $regex: pattern } }).populate(["city","pincode"]).limit(size).skip(size * page);
+            // noOfTimeSlots = (await TimeSlot.find({ time: { $regex: pattern } })).length
+            // timeSlots = await TimeSlot.find({ time: { $regex: pattern } }).populate(["city","pincode"]).limit(size).skip(size * page);
+            let allTimeSlots = await TimeSlot.find().populate(["city","pincode"]);
+            
+            if(query!==""){
+                allTimeSlots = allTimeSlots.filter((singleTime)=>singleTime.pincode.code.includes(query))
+            }
+            
+            
+            noOfTimeSlots = allTimeSlots.length;
+            timeSlots = allTimeSlots.slice(page * size, (page + 1) * size);
         }
         
         success = true;
@@ -118,7 +127,7 @@ const updateATimeSlot = async (req, res) => {
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
-        if(!superAdmin.role.roles.includes("timeSlot") && superAdmin.role.name!=="Admin"){
+        if(!superAdmin.role.roles.includes("timeslots") && superAdmin.role.name!=="Admin"){
             return res.status(400).json({success , message:"Time Slot not allowed"}) 
          }
         // checkig if the timeSlot exists or not
@@ -173,7 +182,7 @@ const deleteATimeSlot = async (req, res) => {
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
-        if(!superAdmin.role.roles.includes("timeSlot") && superAdmin.role.name!=="Admin"){
+        if(!superAdmin.role.roles.includes("timeslots") && superAdmin.role.name!=="Admin"){
             return res.status(400).json({success , message:"Time Slot not allowed"}) 
          }
         // checking if the user exists or not

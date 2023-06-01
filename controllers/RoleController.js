@@ -51,7 +51,7 @@ const getAllRole = async (req, res) => {
             superAdminId = req.superAdmin;
             //check if the user exists or not
             let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
-            console.log(superAdmin);
+            // console.log(superAdmin);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }

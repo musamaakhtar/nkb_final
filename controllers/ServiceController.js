@@ -112,6 +112,15 @@ const getAllService = async (req, res) => {
         else {
             noOfServices = (await Service.find({ name: { $regex: pattern } })).length
             services = await Service.find({ name: { $regex: pattern } }).populate(["city" , "pincode"]).limit(size).skip(size * page);
+            // let allServices = await Service.find().populate(["city","pincode"]);
+            
+            // if(query!==""){
+            //     allServices = allServices.filter((singleService)=>singleService.pincode.code.includes(query))
+            // }
+            
+            
+            // noOfServices = allServices.length;
+            // services = allServices.slice(page * size, (page + 1) * size);
         }
 
         success = true;
