@@ -19,9 +19,9 @@ const addService = async (req, res) => {
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
-            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
-                return res.status(400).json({success , message:"Service not allowed"}) 
-             }
+            if (!superAdmin.role.roles.includes("service") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Service not allowed" })
+            }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -31,8 +31,8 @@ const addService = async (req, res) => {
         }
         // check if the service exists or not
         let service = await Service.findOne({ name });
-        if (service) {
-            return res.status(400).json({ success, message: "There is already one service with this name" })
+        if (service && service.pincode.toString() === pincode.toString()) {
+            return res.status(400).json({ success, message: "There is already one service with this name in this pincode" })
         }
 
         // checking if pincode or city exists
@@ -87,9 +87,9 @@ const getAllService = async (req, res) => {
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
-            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
-                return res.status(400).json({success , message:"Service not allowed"}) 
-             }
+            if (!superAdmin.role.roles.includes("service") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Service not allowed" })
+            }
         }
         else if (req.myapp) {
             appId = req.myapp;
@@ -106,23 +106,79 @@ const getAllService = async (req, res) => {
         if (req.user) {
             let userId = req.user;
             let user = await User.findById(userId);
-            noOfServices = (await Service.find({$and:[{ name: { $regex: pattern } },{city:user.city.toString()},{pincode:user.pincode.toString()}]})).length
-            services = await Service.find({$and:[{ name: { $regex: pattern } },{city:user.city.toString()},{pincode:user.pincode.toString()}]}).populate(["city" , "pincode"]).limit(size).skip(size * page);
+            noOfServices = (await Service.find({ $and: [{ name: { $regex: pattern } }, { city: user.city.toString() }, { pincode: user.pincode.toString() }] })).length
+            services = await Service.find({ $and: [{ name: { $regex: pattern } }, { city: user.city.toString() }, { pincode: user.pincode.toString() }] }).populate(["city", "pincode"]).limit(size).skip(size * page);
         }
         else {
             noOfServices = (await Service.find({ name: { $regex: pattern } })).length
-            services = await Service.find({ name: { $regex: pattern } }).populate(["city" , "pincode"]).limit(size).skip(size * page);
+            services = await Service.find({ name: { $regex: pattern } }).populate(["city", "pincode"]).limit(size).skip(size * page);
             // let allServices = await Service.find().populate(["city","pincode"]);
-            
+
             // if(query!==""){
             //     allServices = allServices.filter((singleService)=>singleService.pincode.code.includes(query))
             // }
-            
-            
+
+
             // noOfServices = allServices.length;
             // services = allServices.slice(page * size, (page + 1) * size);
         }
 
+        success = true;
+        return res.json({ success, message: { services, noOfServices } });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+const getServiceByCityPincode = async (req, res) => {
+    let success = false;
+    const { query, page, size, cityId, pincodeId } = req.query;
+
+    try {
+        let superAdminId, appId;
+
+        if (req.superAdmin) {
+            superAdminId = req.superAdmin;
+            //check if the user exists or not
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate("role");
+            if (!superAdmin) {
+                return res.status(404).json({ success, message: "Super Admin not found" })
+            }
+            if (!superAdmin.role.roles.includes("service") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Service not allowed" })
+            }
+        }
+        else if (req.myapp) {
+            appId = req.myapp;
+            if (appId !== "nkb") {
+                return res.status(401).json({ success, message: "Token wrong" })
+            }
+        }
+        else {
+            return res.status(401).json({ success, message: "No valid token found" })
+        }
+
+        // checking if the city with this cityId exists or not
+        let city = await City.findById(cityId);
+        if (!city) {
+            return res.status(404).json({ success, message: "City not found" });
+        }
+
+        // checking if the pincode with this pincodeId exists or not
+        let pincode = await Pincode.findById(pincodeId);
+        if (!pincode) {
+            return res.status(404).json({ success, message: "Pincode not found" });
+        }
+
+        // checking if the pincode belongs to the city
+        if (pincode.city.toString() !== cityId.toString()) {
+            return res.status(400).json({ success, message: "This pincode does not belong to the city" });
+        }
+
+        const pattern = `${query}`
+        const noOfServices = (await Service.find({ $and: [{ name: { $regex: pattern } }, { city: cityId.toString() }, { pincode: pincodeId.toString() }] })).length
+        const services = await Service.find({ $and: [{ name: { $regex: pattern } }, { city: cityId.toString() }, { pincode: pincodeId.toString() }] }).populate(["city", "pincode"]).limit(size).skip(size * page);
         success = true;
         return res.json({ success, message: { services, noOfServices } });
     } catch (error) {
@@ -145,9 +201,9 @@ const updateAService = async (req, res) => {
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
-            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
-                return res.status(400).json({success , message:"Service not allowed"}) 
-             }
+            if (!superAdmin.role.roles.includes("service") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Service not allowed" })
+            }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -204,9 +260,9 @@ const deleteAService = async (req, res) => {
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
-            if(!superAdmin.role.roles.includes("service") && superAdmin.role.name!=="Admin"){
-                return res.status(400).json({success , message:"Service not allowed"}) 
-             }
+            if (!superAdmin.role.roles.includes("service") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Service not allowed" })
+            }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
@@ -226,4 +282,4 @@ const deleteAService = async (req, res) => {
     }
 }
 
-module.exports = { addService, getAllService, updateAService, deleteAService } 
+module.exports = { addService, getAllService, getServiceByCityPincode, updateAService, deleteAService } 

@@ -496,7 +496,7 @@ const getUserSpecificBooking = async (req, res) => {
     }
 }
 
-const getUserSpecificInvoice = async () => {
+const getUserSpecificInvoice = async (req, res) => {
     let success = false;
     try {
         const id = req.user;
@@ -505,7 +505,30 @@ const getUserSpecificInvoice = async () => {
         if (!user) {
             return res.status(404).json({ success, message: "User not found" })
         }
-        let bookings = await Booking.find({ $and: [{ user: id }, { status: "Completed" }, { pdf: { $ne: "" } }] })
+        let bookings = await Booking.find({ $and: [{ user: id }, { status: "Completed" }, { pdf: { $ne: "" } }] }).populate(["service"])
+
+        success = false;
+        return res.json({ success, message: bookings })
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+const getAllInvoice = async (req, res) => {
+    let success = false;
+    try {
+        let id = req.superAdmin;
+        //check if the super admin exists or not
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(404).json({ success, message: "Super Admin not found" })
+        }
+
+        if (!superAdmin.role.roles.includes("booking") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Booking not allowed" })
+        }
+        let bookings = await Booking.find({ $and: [ { status: "Completed" }, { pdf: { $ne: "" } }] }).populate(["service"])
 
         success = false;
         return res.json({ success, message: bookings })
@@ -590,10 +613,10 @@ const getABookingDetails = async (req, res) => {
         }
         let booking;
         if (id) {
-            booking = await Booking.findOne({ $and: [{ user: id }, { _id: bookingId }] }).populate(["service", "city", "pincode", "selectedQuote", "user", "time"]);
+            booking = await Booking.findOne({ $and: [{ user: id }, { _id: bookingId }] }).populate(["service", "city", "pincode", "selectedQuote", "user", "time", "rating", "review"]);
         }
         else {
-            booking = await Booking.findOne({ _id: bookingId }).populate(["service", "city", "pincode", "selectedQuote", "user", "time"]);
+            booking = await Booking.findOne({ _id: bookingId }).populate(["service", "city", "pincode", "selectedQuote", "user", "time", "rating", "review"]);
         }
 
 
@@ -613,7 +636,7 @@ const getABookingDetails = async (req, res) => {
 
 const updateABooking = async (req, res) => {
     let success = false;
-    const { bookingDate, time, selectedQuote, status, additionalInfo, otp, verifyId, isApproved } = req.body;
+    const { bookingDate, time, selectedQuote, status, additionalInfo, otp, verifyId, isApproved, platformCommission } = req.body;
     const { bookingId } = req.params;
 
     try {
@@ -745,6 +768,9 @@ const updateABooking = async (req, res) => {
             if (additionalInfo) {
                 newBooking.additionalInfo = additionalInfo
             }
+            if (platformCommission) {
+                newBooking.platformCommission = parseInt(platformCommission)
+            }
             if (isApproved || isApproved === false) {
                 newBooking.isApproved = isApproved;
             }
@@ -752,6 +778,86 @@ const updateABooking = async (req, res) => {
 
         }
         booking = await Booking.findById(bookingId)
+        success = true;
+        return res.json({ success, message: booking });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+
+const addMoreImages = async (req, res) => {
+    let success = false;
+    const { bookingId } = req.params;
+
+    try {
+
+        // checking if the booking exists or not
+        let booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({ success, message: "Booking Not found" })
+        }
+
+        let id = req.superAdmin;
+        //check if the super admin exists or not
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(404).json({ success, message: "Super Admin not found" })
+        }
+        if (!superAdmin.role.roles.includes("booking") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Booking not allowed" })
+        }
+
+        // create a new Booking object 
+        let newBooking = {};
+        newBooking.pics = booking.pics;
+        for (let index = 0; index < req.files.images?.length; index++) {
+            const element = req.files.images[index];
+            newBooking.pics.push(`${process.env.HOST}/static/images/bookings/${element.filename}`)
+        }
+        booking = await Booking.findByIdAndUpdate(bookingId, { $set: newBooking }, { new: true })
+
+
+        
+        success = true;
+        return res.json({ success, message: booking });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+const deleteAnImage = async (req, res) => {
+    let success = false;
+    const { bookingId } = req.params;
+    const {imageNo} = req.body
+    try {
+
+        // checking if the booking exists or not
+        let booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({ success, message: "Booking Not found" })
+        }
+
+        let id = req.superAdmin;
+        //check if the super admin exists or not
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(404).json({ success, message: "Super Admin not found" })
+        }
+        if (!superAdmin.role.roles.includes("booking") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Booking not allowed" })
+        }
+
+        // create a new Booking object 
+        let newBooking = {};
+        newBooking.pics = booking.pics.filter((image , index)=>index!==parseInt(imageNo));
+        
+        booking = await Booking.findByIdAndUpdate(bookingId, { $set: newBooking }, { new: true })
+
+
+        
         success = true;
         return res.json({ success, message: booking });
     } catch (error) {
@@ -805,4 +911,4 @@ const deleteABooking = async (req, res) => {
     }
 }
 
-module.exports = { addBooking, getAllBooking, getUserSpecificBooking, getABookingDetails,getUserSpecificInvoice, sendOtp, generateReport, updateABooking, deleteABooking } 
+module.exports = { addBooking, getAllBooking, getUserSpecificBooking, getABookingDetails, getUserSpecificInvoice, sendOtp, generateReport, updateABooking, deleteABooking , addMoreImages , deleteAnImage , getAllInvoice } 

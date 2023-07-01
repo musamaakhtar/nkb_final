@@ -5,11 +5,12 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const SuperAdmin = require('../models/SuperAdminModel');
 const Role = require('../models/RoleModel');
+const City = require('../models/CityModel');
 
 
 const add = async (req, res) => {
     let success = false;
-    const { name, phone, email, role, password } = req.body
+    const { name, phone, email, role,cities, password } = req.body
     try {
         const app = req.myapp;
         if (app !== "nkb") {
@@ -34,6 +35,15 @@ const add = async (req, res) => {
             return res.status(400).json({ success, message: "Can not create more than one super admin" })
         }
 
+        let actualCities = [];
+        for (let index = 0; index < cities.length; index++) {
+            const cityId = cities[index];
+            let city = await City.findById(cityId);
+            if(city){
+                actualCities.push(cityId);
+            }
+        }
+
         const salt = await bcrypt.genSalt(10);
         const secPass = await bcrypt.hash(password, salt);
         superAdmin = await SuperAdmin.create({
@@ -41,6 +51,7 @@ const add = async (req, res) => {
             phone,
             email,
             role,
+            cities:actualCities,
             password: secPass,
             date: new Date().getTime()
         })
@@ -110,10 +121,6 @@ const updateAdmin = async (req, res) => {
             return res.status(400).json({ success, message: "You are not allowed to update admin details" })
         }
 
-        //checking if any superadmin exists with this name , phone or email
-
-
-
         // creating the salt
         const salt = await bcrypt.genSalt(10);
         // create a new admin object
@@ -149,6 +156,17 @@ const updateAdmin = async (req, res) => {
                 return res.status(404).json({success , message:"Role not found"})
             }
             newAdmin.role= role
+        }
+        if(cities){
+            let actualCities = [];
+            for (let index = 0; index < cities.length; index++) {
+                const cityId = cities[index];
+                let city = await City.findById(cityId);
+                if(city){
+                    actualCities.push(cityId);
+                }
+            }
+            newAdmin.cities = actualCities;
         }
 
         

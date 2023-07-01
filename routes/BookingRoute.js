@@ -1,5 +1,5 @@
 const express = require("express");
-const { addBooking , getAllBooking , updateABooking , deleteABooking, getUserSpecificBooking, getABookingDetails, generateReport, sendOtp, getUserSpecificInvoice} = require("../controllers/BookingController");
+const { addBooking , getAllBooking , updateABooking , deleteABooking, getUserSpecificBooking, getABookingDetails, generateReport, sendOtp, getUserSpecificInvoice, addMoreImages, deleteAnImage, getAllInvoice} = require("../controllers/BookingController");
 const router = express.Router();
 const fetchall = require("../middlewares/fetchall");
 const {upload} = require("../utilities/multerSetup")
@@ -20,6 +20,9 @@ router.get("/",fetchall, getUserSpecificBooking)
 // get user specific invoice
 router.get("/invoices" , fetchall , getUserSpecificInvoice);
 
+// get all invoice
+router.get("/all-invoices" , fetchall , getAllInvoice);
+
 // Router-3 : getting booking of a specific user
 router.get("/generate-report/:bookingId", generateReport)
 
@@ -32,6 +35,11 @@ router.put("/send-otp",fetchall, sendOtp)
 // Router 4 : Update an existing user using PUT "/api/user"
 router.put("/:bookingId",fetchall, updateABooking)
 
+// adding extra images in booking
+router.put("/images/:bookingId" ,fetchall,imageUpload,addMoreImages )
+
+// delete an image in booking
+router.delete("/images/:bookingId" ,fetchall,imageUpload,deleteAnImage )
 
 
 // Router 5 : delete an existing user using DELETE "/api/user"

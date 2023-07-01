@@ -78,8 +78,12 @@ const getAllCity = async (req, res) => {
             return res.status(401).json({ success, message: "No valid token found" })
         }
         const pattern = `${query}`
-        const noOfCities = (await City.find({ name: { $regex: pattern } })).length
-        const cities = await City.find({ name: { $regex: pattern } }).limit(size).skip(size * page);
+        let noOfCities = (await City.find({ name: { $regex: pattern } })).length
+        // let cities = await City.find({ name: { $regex: pattern } }).limit(size).skip(size * page);
+        let cities = await City.find({ name: { $regex: pattern } })
+        if(req.superAdmin){
+            
+        }
         success = true;
         return res.json({ success, message: { cities, noOfCities } });
     } catch (error) {
@@ -96,7 +100,7 @@ const updateACity = async (req, res) => {
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
@@ -136,7 +140,7 @@ const deleteACity = async (req, res) => {
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
-        let superAdmin = await SuperAdmin.findById(id);
+        let superAdmin = await SuperAdmin.findById(id).populate(["role"]);
         if (!superAdmin) {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }

@@ -25,9 +25,16 @@ const loginTechnician = async (req, res) => {
         // check if the technician exists or not
         let technician = await Technician.findOne({ phone });
 
-        if(technician.otp !== parseInt(otp)){
-            return res.status(400).json({success , message:"Please enter correct otp"})
+        if (!technician) {
+            return res.status(404).json({ success, message: "Sorry you do not have any account" })
+        };
+        if (!technician.isApproved) {
+            return res.status(400).json({ success, message: "Sorry your account is not approved yet by admin" })
         }
+
+        // if(technician.otp !== parseInt(otp)){
+        //     return res.status(400).json({success , message:"Please enter correct otp"})
+        // }
 
         // creating jwt token
         const data = { technician: technician._id };

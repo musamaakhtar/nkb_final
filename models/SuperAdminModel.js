@@ -21,6 +21,7 @@ const SuperAdminSchema = new Schema({
   },
 
   role:{ type: Schema.Types.ObjectId, ref: 'role' },
+  cities: [{ type: Schema.Types.ObjectId, ref: 'city' }], 
   password:{
     type:String,
     required:true,
