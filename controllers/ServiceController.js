@@ -109,6 +109,24 @@ const getAllService = async (req, res) => {
             noOfServices = (await Service.find({ $and: [{ name: { $regex: pattern } }, { city: user.city.toString() }, { pincode: user.pincode.toString() }] })).length
             services = await Service.find({ $and: [{ name: { $regex: pattern } }, { city: user.city.toString() }, { pincode: user.pincode.toString() }] }).populate(["city", "pincode"]).limit(size).skip(size * page);
         }
+        else if (req.superAdmin) {
+            superAdminId = req.superAdmin;
+            //check if the user exists or not
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+            if (!superAdmin) {
+                return res.status(404).json({ success, message: "Super Admin not found" })
+            }
+            if (!superAdmin.role.roles.includes("service") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Service not allowed" })
+            }
+            services = await Service.find({ name: { $regex: pattern } }).populate(["city", "pincode"])
+            if (superAdmin.role.name !== "Admin") {
+                services = services.filter(service=>service.city!==null)
+                services = services.filter(service => superAdmin.cities.includes(service.city._id.toString()))
+            }
+            noOfServices = services.length;
+            services = services.slice(page * size, (page + 1) * size);
+        }
         else {
             noOfServices = (await Service.find({ name: { $regex: pattern } })).length
             services = await Service.find({ name: { $regex: pattern } }).populate(["city", "pincode"]).limit(size).skip(size * page);

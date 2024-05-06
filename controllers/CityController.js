@@ -79,10 +79,26 @@ const getAllCity = async (req, res) => {
         }
         const pattern = `${query}`
         let noOfCities = (await City.find({ name: { $regex: pattern } })).length
-        // let cities = await City.find({ name: { $regex: pattern } }).limit(size).skip(size * page);
-        let cities = await City.find({ name: { $regex: pattern } })
+        let cities = await City.find({ name: { $regex: pattern } }).limit(size).skip(size * page);
+        
         if(req.superAdmin){
-            
+            let superAdminId = req.superAdmin;
+            //check if the user exists or not
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+            if (!superAdmin) {
+                return res.status(404).json({ success, message: "Super Admin not found" })
+            }
+            if(!superAdmin.role.roles.includes("city") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"City not allowed"}) 
+             }
+             
+             cities = await City.find({ name: { $regex: pattern } })
+             if (superAdmin.role.name !== "Admin"){
+             cities = cities.filter(city=>superAdmin.cities.includes(city._id.toString()))
+             }
+             noOfCities = cities.length;
+             cities = cities.slice(page * size, (page + 1) * size);
+
         }
         success = true;
         return res.json({ success, message: { cities, noOfCities } });

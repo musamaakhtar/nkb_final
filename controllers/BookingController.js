@@ -13,6 +13,8 @@ let handlebars = require("handlebars");
 let puppeteer = require("puppeteer");
 let path = require("path");
 const { default: axios } = require('axios');
+const Review = require('../models/ReviewModel');
+const Rating = require('../models/RatingModel');
 const companyName = "NKB";
 const companyGST = "VBNMJH3467ifxcjkbjvh56"
 const companyAddress = "dfcvbghk rghnuikl,hg cc hmmnfgh eghjkl"
@@ -279,15 +281,15 @@ const generateReport = async (req, res) => {
             <div class="gstSectionItem">
                 <span>Amount of IGST</span>
                 <span class="gstSectionSubItem">
-                    <span style="margin-left: 10px;">18.00%</span>
-                    <span style="margin-right: 10px;">${booking.selectedQuote.price * .18}</span>
+                    <span style="margin-left: 10px;">9.00%</span>
+                    <span style="margin-right: 10px;">${booking.selectedQuote.price * .09}</span>
                 </span>
             </div>
             <div class="gstSectionItem">
                 <span>Amount of CGST</span>
                 <span class="gstSectionSubItem">
-                    <span style="margin-left: 10px;">18.00%</span>
-                    <span style="margin-right: 10px;">${booking.selectedQuote.price * .18}</span>
+                    <span style="margin-left: 10px;">9.00%</span>
+                    <span style="margin-right: 10px;">${booking.selectedQuote.price * .09}</span>
                 </span>
             </div>
             <div class="gstSectionItem">
@@ -453,8 +455,16 @@ const getAllBooking = async (req, res) => {
         }
 
         const pattern = `${query}`
-        const noOfBookings = (await Booking.find({ status: { $regex: pattern } })).length
-        const bookings = await Booking.find({ status: { $regex: pattern } }).populate(["service", "city", "pincode", "time"]).limit(size).skip(size * page);
+
+        let bookings = await Booking.find({ status: { $regex: pattern } }).populate(["service", "city", "pincode", "time"])
+
+        if (superAdmin.role.name !== "Admin") {
+            bookings = bookings.filter(booking=>booking.city!==null)
+            bookings = bookings.filter(booking => superAdmin.cities.includes(booking.city._id.toString()))
+        }
+        const noOfBookings = bookings.length
+        bookings = bookings.slice(page * size, (page + 1) * size);
+
         success = true;
         return res.json({ success, message: { bookings, noOfBookings } });
     } catch (error) {
@@ -498,6 +508,7 @@ const getUserSpecificBooking = async (req, res) => {
 
 const getUserSpecificInvoice = async (req, res) => {
     let success = false;
+    
     try {
         const id = req.user;
         //check if the user exists or not
@@ -517,6 +528,7 @@ const getUserSpecificInvoice = async (req, res) => {
 
 const getAllInvoice = async (req, res) => {
     let success = false;
+    const { page, size } = req.query;
     try {
         let id = req.superAdmin;
         //check if the super admin exists or not
@@ -525,13 +537,14 @@ const getAllInvoice = async (req, res) => {
             return res.status(404).json({ success, message: "Super Admin not found" })
         }
 
-        if (!superAdmin.role.roles.includes("booking") && superAdmin.role.name !== "Admin") {
-            return res.status(400).json({ success, message: "Booking not allowed" })
+        if (!superAdmin.role.roles.includes("invoice") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Invoice not allowed" })
         }
-        let bookings = await Booking.find({ $and: [ { status: "Completed" }, { pdf: { $ne: "" } }] }).populate(["service"])
+        let noOfInvoices = (await Booking.find({ $and: [{ status: "Completed" }, { pdf: { $ne: "" } }] })).length
+        let invoices = await Booking.find({ $and: [{ status: "Completed" }, { pdf: { $ne: "" } }] }).populate(["service"]).limit(size).skip(size * page);
 
         success = false;
-        return res.json({ success, message: bookings })
+        return res.json({ success, message: {invoices , noOfInvoices} })
     } catch (error) {
         console.error(error.message);
         return res.status(500).json({ success, message: "Internal server error" });
@@ -636,6 +649,7 @@ const getABookingDetails = async (req, res) => {
 
 const updateABooking = async (req, res) => {
     let success = false;
+    // console.log(req.body)
     const { bookingDate, time, selectedQuote, status, additionalInfo, otp, verifyId, isApproved, platformCommission } = req.body;
     const { bookingId } = req.params;
 
@@ -688,6 +702,9 @@ const updateABooking = async (req, res) => {
             }
             if (status) {
                 if (booking.status.toString() === "Wating" && (status === "Assigned" || status === "Cancelled")) {
+                    newBooking.status = status;
+                }
+                if(status){
                     newBooking.status = status;
                 }
                 if (booking.status.toString() === "Assigned" && status === "Started") {
@@ -754,6 +771,10 @@ const updateABooking = async (req, res) => {
                     return res.status(400).json({ success, message: "This quote is not belong to the booking" })
                 }
 
+                if(quote.status.toString()!=="Pending"){
+                    return res.status(400).json({success , message:"Another quote of this booking is already approved"})
+                }
+
                 // update the quote status of all the quote of this booking
                 await Quote.updateMany({ booking: bookingId }, { $set: { status: "Rejected" } }, { new: true });
                 await Quote.findByIdAndUpdate(selectedQuote, { $set: { status: "Approved" } }, { new: true })
@@ -764,6 +785,7 @@ const updateABooking = async (req, res) => {
             }
             if (status) {
                 newBooking.status = status
+                // console.log(bookingId , status)
             }
             if (additionalInfo) {
                 newBooking.additionalInfo = additionalInfo
@@ -819,7 +841,7 @@ const addMoreImages = async (req, res) => {
         booking = await Booking.findByIdAndUpdate(bookingId, { $set: newBooking }, { new: true })
 
 
-        
+
         success = true;
         return res.json({ success, message: booking });
     } catch (error) {
@@ -831,7 +853,7 @@ const addMoreImages = async (req, res) => {
 const deleteAnImage = async (req, res) => {
     let success = false;
     const { bookingId } = req.params;
-    const {imageNo} = req.body
+    const { imageNo } = req.body
     try {
 
         // checking if the booking exists or not
@@ -852,12 +874,12 @@ const deleteAnImage = async (req, res) => {
 
         // create a new Booking object 
         let newBooking = {};
-        newBooking.pics = booking.pics.filter((image , index)=>index!==parseInt(imageNo));
-        
+        newBooking.pics = booking.pics.filter((image, index) => index !== parseInt(imageNo));
+
         booking = await Booking.findByIdAndUpdate(bookingId, { $set: newBooking }, { new: true })
 
 
-        
+
         success = true;
         return res.json({ success, message: booking });
     } catch (error) {
@@ -901,7 +923,12 @@ const deleteABooking = async (req, res) => {
             return res.status(404).json({ success, message: "Not found" })
         }
 
+        // delete rating , review and quote for this booking
+        await Quote.deleteMany({booking:bookingId});
+        await Rating.deleteMany({booking:bookingId});
+        await Review.deleteMany({booking:bookingId});
         booking = await Booking.findByIdAndDelete(bookingId);
+        
 
         success = true;
         return res.json({ success, message: booking });
@@ -911,4 +938,4 @@ const deleteABooking = async (req, res) => {
     }
 }
 
-module.exports = { addBooking, getAllBooking, getUserSpecificBooking, getABookingDetails, getUserSpecificInvoice, sendOtp, generateReport, updateABooking, deleteABooking , addMoreImages , deleteAnImage , getAllInvoice } 
+module.exports = { addBooking, getAllBooking, getUserSpecificBooking, getABookingDetails, getUserSpecificInvoice, sendOtp, generateReport, updateABooking, deleteABooking, addMoreImages, deleteAnImage, getAllInvoice } 

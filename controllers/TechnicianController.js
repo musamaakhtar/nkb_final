@@ -140,11 +140,11 @@ const getTechnician = async (req, res) => {
     let success = false;
     const { query, page, size } = req.query;
     try {
-        let superAdminId;
+        let superAdminId , superAdmin;
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+            superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
@@ -157,8 +157,18 @@ const getTechnician = async (req, res) => {
         }
 
         const pattern = `${query}`
-        const noOfTechnicians = (await Technician.find({ phone: { $regex: pattern } })).length
-        const technicians = await Technician.find({ phone: { $regex: pattern } }).populate(["city" , "category","pincode"]).limit(size).skip(size * page);
+        
+        let technicians = await Technician.find({ phone: { $regex: pattern } }).populate(["city" , "category","pincode"])
+        // console.log(technicians)
+        if (superAdmin.role.name !== "Admin") {
+            technicians = technicians.filter(technician=>technician.city!==null)
+            technicians = technicians.filter(technician => {
+                
+                return superAdmin.cities.includes(technician.city._id.toString())
+            })
+        }
+        const noOfTechnicians = technicians.length;
+        technicians = technicians.slice(page * size, (page + 1) * size);
         success = true;
         return res.json({ success, message: { technicians, noOfTechnicians } });
     } catch (error) {

@@ -1,5 +1,5 @@
 const express = require("express");
-const { addReview , getAllReview, getUserOrTechnicianSpecificReview } = require("../controllers/ReviewController");
+const { addReview , getAllReview, getUserOrTechnicianSpecificReview, updateAReview, deleteAReview } = require("../controllers/ReviewController");
 const router = express.Router();
 const fetchall = require("../middlewares/fetchall");
 
@@ -14,10 +14,10 @@ router.get("/all",fetchall, getAllReview)
 router.get("/",fetchall, getUserOrTechnicianSpecificReview)
 
 // Router 4 : Update an existing user using PUT "/api/user"
-// router.put("/:reviewId", updateAReview)
+router.put("/:reviewId",fetchall, updateAReview)
 
 // Router 5 : delete an existing user using DELETE "/api/user"
-// router.delete("/:reviewId", deleteAReview)
+router.delete("/:reviewId",fetchall, deleteAReview)
 
 
 module.exports = router;

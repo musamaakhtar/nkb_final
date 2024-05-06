@@ -81,11 +81,11 @@ const getUser = async (req, res) => {
     let success = false;
     const { query, page, size } = req.query;
     try {
-        let superAdminId;
+        let superAdminId , superAdmin;
         if (req.superAdmin) {
             superAdminId = req.superAdmin;
             //check if the user exists or not
-            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+            superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
@@ -97,8 +97,14 @@ const getUser = async (req, res) => {
             return res.status(401).json({ success, message: "No valid token found" })
         }
         const pattern = `${query}`
-        const noOfUsers = (await User.find({ phone: { $regex: pattern } })).length
-        const users = await User.find({ phone: { $regex: pattern } }).populate(["city" , "pincode"]).limit(size).skip(size * page);
+        
+        let users = await User.find({ phone: { $regex: pattern } }).populate(["city" , "pincode"]);
+        if (superAdmin.role.name !== "Admin") {
+            users = users.filter(user=>user.city!==null)
+            users = users.filter(user => superAdmin.cities.includes(user.city._id.toString()))
+        }
+        const noOfUsers = users.length;
+        users = users.slice(page * size, (page + 1) * size);
         success = true;
         return res.json({ success, message: { users, noOfUsers } });
     } catch (error) {

@@ -66,7 +66,7 @@ const addRating = async (req, res) => {
 
 const getAllRating = async (req, res) => {
     let success = false;
-    const { page, size } = req.query;
+    const { page, size , query } = req.query;
     try {
         let  superAdminId;
         if (req.superAdmin) {
@@ -76,7 +76,7 @@ const getAllRating = async (req, res) => {
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
-            if(!superAdmin.role.roles.includes("booking") && superAdmin.role.name!=="Admin"){
+            if(!superAdmin.role.roles.includes("rating") && superAdmin.role.name!=="Admin"){
                 return res.status(400).json({success , message:"Booking not allowed"}) 
              }
         }
@@ -84,8 +84,10 @@ const getAllRating = async (req, res) => {
             return res.status(401).json({ success, message: "No valid token found" })
         }
         // const pattern = `${query}`
-        const noOfRatings = (await Rating.find()).length
-        const ratings = await Rating.find().limit(size).skip(size * page);
+        let ratings = await Rating.find().populate(["user", "technician"]);
+        ratings = ratings.filter(rating=>((rating.user?rating.user.phone.toString().includes(query):"xyz".includes(query)) || (rating.technician?rating.technician.phone.toString().includes(query):"xyz".includes(query))))
+        const noOfRatings = ratings.length
+        ratings = ratings.slice(page * size, (page + 1) * size);
         success = true;
         return res.json({ success, message: { ratings, noOfRatings } });
     } catch (error) {
@@ -128,59 +130,74 @@ const getUserOrTechnicianSpecificRating = async (req, res) => {
     }
 }
 
-// const updateARating = async (req, res) => {
-//     let success = false;
-//     const { name } = req.body;
-//     const {ratingId} = req.params;
+const updateARating = async (req, res) => {
+    let success = false;
+    const { ratingNumber } = req.body;
+    const { ratingId } = req.params;
 
-//     try {        
-//         // checkig if the rating exists or not
-//         let rating = await Rating.findById(ratingId);
-//         if (!rating) {
-//             return res.status(404).json({ success, message: "Not found" })
-//         }
+    try {
+        // checkig if the review exists or not
+        let rating = await Rating.findById(ratingId);
+        if (!rating) {
+            return res.status(404).json({ success, message: "Not found" })
+        }
 
-//         // checking if there is an rating with this name or not
-//         rating = await Rating.findOne({name});
-//         if (rating) {
-//             return res.status(400).json({ success, message: "There is already a rating exists with this name" })
-//         }
+        let superAdminId = req.superAdmin;
+        //check if the user exists or not
+        let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(404).json({ success, message: "Super Admin not found" })
+        }
+        if (!superAdmin.role.roles.includes("rating") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Booking not allowed" })
+        }
 
-//         // creating a new rating object
-//         let newRating = {};
-//         newRating.name = name;    
 
-//         rating = await Rating.findByIdAndUpdate(ratingId, { $set: newRating }, { new: true });
+        // creating a new review object
+        let newRating = {};
+        newRating.rating = ratingNumber;
 
-//         success = true;
-//         return res.json({ success, message: rating });
-//     } catch (error) {
-//         console.error(error.message);
-//         return res.status(500).json({ success, message: "Internal server error" });
-//     }
-// }
+        rating = await Rating.findByIdAndUpdate(ratingId, { $set: newRating }, { new: true });
 
-// const deleteARating = async (req, res) => {
-//     let success = false;
-//     const {ratingId} = req.params;
+        success = true;
+        return res.json({ success, message: rating });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
 
-//     try {
+const deleteARating = async (req, res) => {
+    let success = false;
+    const { ratingId } = req.params;
 
-//         // checking if the user exists or not
-//         let rating = await Rating.findById(ratingId);
-//         if (!rating) {
-//             return res.status(404).json({ success, message: "Not found" })
-//         }
-//         // delete associates pincode with this rating
-//         await Pincode.deleteMany({rating:ratingId});
-//         rating = await Rating.findByIdAndDelete(ratingId);
+    try {
 
-//         success = true;
-//         return res.json({ success, message: rating });
-//     } catch (error) {
-//         console.error(error.message);
-//         return res.status(500).json({ success, message: "Internal server error" });
-//     }
-// }
+        // checking if the user exists or not
+        let rating = await Rating.findById(ratingId);
+        if (!rating) {
+            return res.status(404).json({ success, message: "Not found" })
+        }
 
-module.exports = { addRating, getAllRating ,getUserOrTechnicianSpecificRating } 
+        let superAdminId = req.superAdmin;
+        //check if the user exists or not
+        let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(404).json({ success, message: "Super Admin not found" })
+        }
+        if (!superAdmin.role.roles.includes("rating") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Booking not allowed" })
+        }
+
+
+        rating = await Rating.findByIdAndDelete(ratingId);
+
+        success = true;
+        return res.json({ success, message: rating });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+module.exports = { addRating, getAllRating ,getUserOrTechnicianSpecificRating , updateARating , deleteARating } 

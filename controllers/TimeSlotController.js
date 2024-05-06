@@ -21,7 +21,7 @@ const addTimeSlot = async (req, res) => {
             return res.status(400).json({success , message:"Time Slot not allowed"}) 
          }
         // check if the timeSlot exists or not
-        let timeSlot = await TimeSlot.findOne({ time });
+        let timeSlot = await TimeSlot.findOne({$and: [{time},{city},{pincode}] });
         if (timeSlot) {
             return res.status(400).json({ success, message: "There is already one timeSlot with this time" })
         }
@@ -100,6 +100,22 @@ const getAllTimeSlot = async (req, res) => {
             
             if(query!==""){
                 allTimeSlots = allTimeSlots.filter((singleTime)=>singleTime.pincode.code.includes(query))
+            }
+
+            if (req.superAdmin) {
+                superAdminId = req.superAdmin;
+                //check if the user exists or not
+                let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+                if (!superAdmin) {
+                    return res.status(404).json({ success, message: "Super Admin not found" })
+                }
+                if(!superAdmin.role.roles.includes("timeslots") && superAdmin.role.name!=="Admin"){
+                    return res.status(400).json({success , message:"Time Slot not allowed"}) 
+                 }
+                 if (superAdmin.role.name !== "Admin") {
+                    allTimeSlots = allTimeSlots.filter(allTimeSlot=>allTimeSlot.city!==null)
+                    allTimeSlots = allTimeSlots.filter(allTimeSlot => superAdmin.cities.includes(allTimeSlot.city._id.toString()))
+                }
             }
             
             

@@ -36,14 +36,14 @@ const add = async (req, res) => {
         }
 
         let actualCities = [];
-        for (let index = 0; index < cities.length; index++) {
+        for (let index = 0; index < cities?.length; index++) {
             const cityId = cities[index];
             let city = await City.findById(cityId);
             if(city){
                 actualCities.push(cityId);
             }
         }
-
+console.log(actualCities);
         const salt = await bcrypt.genSalt(10);
         const secPass = await bcrypt.hash(password, salt);
         superAdmin = await SuperAdmin.create({
@@ -107,7 +107,7 @@ const getASingleAdmin = async (req, res) => {
 
 const updateAdmin = async (req, res) => {
     let success = false;
-    const { name, password, phone, email , role } = req.body;
+    const { name, password, phone, email , role , cities } = req.body;
     const { id } = req.params;
     try {
 
@@ -211,6 +211,7 @@ const deleteAdmin = async (req, res) => {
 const login = async (req, res) => {
     let success = false;
     const { name, password } = req.body;
+    console.log(name)
     try {
         const app = req.myapp;
         if (app !== "nkb") {

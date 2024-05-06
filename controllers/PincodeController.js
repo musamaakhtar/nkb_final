@@ -79,8 +79,30 @@ const getAllPincode = async (req, res) => {
             return res.status(401).json({ success, message: "No valid token found" })
         }
         const pattern = `${query}`
-        const noOfPincodes = (await Pincode.find({ code: { $regex: pattern } })).length
-        const pincodes = await Pincode.find({ code: { $regex: pattern } }).populate("city", "name").limit(size).skip(size * page);
+        let noOfPincodes = (await Pincode.find({ code: { $regex: pattern } })).length
+        let pincodes = await Pincode.find({ code: { $regex: pattern } }).populate("city", "name").limit(size).skip(size * page);
+        if(req.superAdmin){
+            let superAdminId = req.superAdmin;
+            //check if the user exists or not
+            let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+            if (!superAdmin) {
+                return res.status(404).json({ success, message: "Super Admin not found" })
+            }
+            if(!superAdmin.role.roles.includes("pincode") && superAdmin.role.name!=="Admin"){
+                return res.status(400).json({success , message:"Pincode not allowed"}) 
+             }
+             
+             pincodes = await Pincode.find({ code: { $regex: pattern } }).populate("city", "name");
+             console.log(pincodes)
+             if (superAdmin.role.name !== "Admin"){
+                pincodes = pincodes.filter(pincode=>pincode.city!==null)
+             pincodes = pincodes.filter(pincode=>superAdmin.cities.includes(pincode.city._id.toString()))
+             console.log(superAdmin.cities)
+            }
+             noOfPincodes = pincodes.length;
+             pincodes = pincodes.slice(page * size, (page + 1) * size);
+
+        }
         success = true;
         return res.json({ success, message: { pincodes, noOfPincodes } });
     } catch (error) {

@@ -34,7 +34,7 @@ const addReview = async (req, res) => {
             user: id,
             booking: bookingId,
             technician: booking.selectedQuote.technician,
-            date:new Date().getTime()
+            date: new Date().getTime()
         })
 
         await Booking.findByIdAndUpdate(bookingId, { $set: { review: newReview._id } }, { new: true })
@@ -60,16 +60,19 @@ const getAllReview = async (req, res) => {
             if (!superAdmin) {
                 return res.status(404).json({ success, message: "Super Admin not found" })
             }
-            if(!superAdmin.role.roles.includes("booking") && superAdmin.role.name!=="Admin"){
-                return res.status(400).json({success , message:"Booking not allowed"}) 
-             }
+            if (!superAdmin.role.roles.includes("review") && superAdmin.role.name !== "Admin") {
+                return res.status(400).json({ success, message: "Booking not allowed" })
+            }
         }
         else {
             return res.status(401).json({ success, message: "No valid token found" })
         }
-        const pattern = `${query}`
-        const noOfReviews = (await Review.find({ review: { $regex: pattern } })).length
-        const reviews = await Review.find({ review: { $regex: pattern } }).limit(size).skip(size * page);
+        // const pattern = `${query}`
+        // const noOfReviews = (await Review.find({ review: { $regex: pattern } })).length
+        let reviews = await Review.find().populate(["user", "technician"]);
+        reviews = reviews.filter(review=>((review.user?review.user.phone.toString().includes(query):"xyz".includes(query)) || (review.technician?review.technician.phone.toString().includes(query):"xyz".includes(query))))
+        const noOfReviews = reviews.length
+        reviews = reviews.slice(page * size, (page + 1) * size);
         success = true;
         return res.json({ success, message: { reviews, noOfReviews } });
     } catch (error) {
@@ -82,28 +85,28 @@ const getUserOrTechnicianSpecificReview = async (req, res) => {
     let success = false;
     const { query, page, size } = req.query;
     try {
-        let noOfReviews , reviews;
+        let noOfReviews, reviews;
         const pattern = `${query}`
-        if(req.user){
+        if (req.user) {
             let userId = req.user;
             let user = await User.findById(userId);
-            if(!user){
-                return res.status(404).json({success , message:"User not found"})
+            if (!user) {
+                return res.status(404).json({ success, message: "User not found" })
             }
-            noOfReviews = (await Review.find({$and:[{ review: { $regex: pattern } },{user:userId}]})).length
-            reviews = await Review.find({$and:[{ review: { $regex: pattern } },{user:userId}]}).limit(size).skip(size * page);
+            noOfReviews = (await Review.find({ $and: [{ review: { $regex: pattern } }, { user: userId }] })).length
+            reviews = await Review.find({ $and: [{ review: { $regex: pattern } }, { user: userId }] }).limit(size).skip(size * page);
         }
-        else if(req.technician){
+        else if (req.technician) {
             let technicianId = req.technician;
             let technician = await Technician.findById(technicianId);
-            if(!technician){
-                return res.status(404).json({success , message:"Technician not found"})
+            if (!technician) {
+                return res.status(404).json({ success, message: "Technician not found" })
             }
-            noOfReviews = (await Review.find({$and:[{ review: { $regex: pattern } },{technician:technicianId}]})).length
-            reviews = await Review.find({$and:[{ review: { $regex: pattern } },{technician:technicianId}]}).limit(size).skip(size * page);
+            noOfReviews = (await Review.find({ $and: [{ review: { $regex: pattern } }, { technician: technicianId }] })).length
+            reviews = await Review.find({ $and: [{ review: { $regex: pattern } }, { technician: technicianId }] }).limit(size).skip(size * page);
         }
-        
-        
+
+
         success = true;
         return res.json({ success, message: { reviews, noOfReviews } });
     } catch (error) {
@@ -112,59 +115,74 @@ const getUserOrTechnicianSpecificReview = async (req, res) => {
     }
 }
 
-// const updateAReview = async (req, res) => {
-//     let success = false;
-//     const { name } = req.body;
-//     const {reviewId} = req.params;
+const updateAReview = async (req, res) => {
+    let success = false;
+    const { reviewText } = req.body;
+    const { reviewId } = req.params;
 
-//     try {        
-//         // checkig if the review exists or not
-//         let review = await Review.findById(reviewId);
-//         if (!review) {
-//             return res.status(404).json({ success, message: "Not found" })
-//         }
+    try {
+        // checkig if the review exists or not
+        let review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ success, message: "Not found" })
+        }
 
-//         // checking if there is an review with this name or not
-//         review = await Review.findOne({name});
-//         if (review) {
-//             return res.status(400).json({ success, message: "There is already a review exists with this name" })
-//         }
+        let superAdminId = req.superAdmin;
+        //check if the user exists or not
+        let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(404).json({ success, message: "Super Admin not found" })
+        }
+        if (!superAdmin.role.roles.includes("review") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Booking not allowed" })
+        }
 
-//         // creating a new review object
-//         let newReview = {};
-//         newReview.name = name;    
 
-//         review = await Review.findByIdAndUpdate(reviewId, { $set: newReview }, { new: true });
+        // creating a new review object
+        let newReview = {};
+        newReview.review = reviewText;
 
-//         success = true;
-//         return res.json({ success, message: review });
-//     } catch (error) {
-//         console.error(error.message);
-//         return res.status(500).json({ success, message: "Internal server error" });
-//     }
-// }
+        review = await Review.findByIdAndUpdate(reviewId, { $set: newReview }, { new: true });
 
-// const deleteAReview = async (req, res) => {
-//     let success = false;
-//     const {reviewId} = req.params;
+        success = true;
+        return res.json({ success, message: review });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
 
-//     try {
+const deleteAReview = async (req, res) => {
+    let success = false;
+    const { reviewId } = req.params;
 
-//         // checking if the user exists or not
-//         let review = await Review.findById(reviewId);
-//         if (!review) {
-//             return res.status(404).json({ success, message: "Not found" })
-//         }
-//         // delete associates pincode with this review
-//         await Pincode.deleteMany({review:reviewId});
-//         review = await Review.findByIdAndDelete(reviewId);
+    try {
 
-//         success = true;
-//         return res.json({ success, message: review });
-//     } catch (error) {
-//         console.error(error.message);
-//         return res.status(500).json({ success, message: "Internal server error" });
-//     }
-// }
+        // checking if the user exists or not
+        let review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ success, message: "Not found" })
+        }
 
-module.exports = { addReview, getAllReview ,getUserOrTechnicianSpecificReview} 
+        let superAdminId = req.superAdmin;
+        //check if the user exists or not
+        let superAdmin = await SuperAdmin.findById(superAdminId).populate(["role"]);
+        if (!superAdmin) {
+            return res.status(404).json({ success, message: "Super Admin not found" })
+        }
+        if (!superAdmin.role.roles.includes("review") && superAdmin.role.name !== "Admin") {
+            return res.status(400).json({ success, message: "Booking not allowed" })
+        }
+
+
+        review = await Review.findByIdAndDelete(reviewId);
+
+        success = true;
+        return res.json({ success, message: review });
+    } catch (error) {
+        console.error(error.message);
+        return res.status(500).json({ success, message: "Internal server error" });
+    }
+}
+
+module.exports = { addReview, getAllReview, getUserOrTechnicianSpecificReview, updateAReview, deleteAReview } 
