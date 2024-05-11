@@ -1,7 +1,7 @@
-const connectToMongoDB = require("./db");
+const connectToMongo = require("./db");
 var cors = require("cors");
 // var bodyParser = require('body-parser')
-connectToMongoDB();
+connectToMongo();
 const express = require('express')
 const app = express()
 const port = 5005;
