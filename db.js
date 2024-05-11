@@ -12,16 +12,27 @@ const connectOptions = {
 };
 // let dbClient = null;
 
-function connectToMongoDB() {
-    MongoClient.connect(mongoURI, connectOptions)
-        .then(client => {
-            console.log('Connected to MongoDB');
-            // dbClient = client;
-            // Handle any required database initialization or setup here
-        })
-        .catch(err => {
-            console.error('Error connecting to MongoDB:', err.message);
-        });
+async function connectToMongoDB() {
+   try {
+        const client = new MongoClient(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
+        await client.connect();
+        console.log('Connected to MongoDB');
+        // dbClient = client;
+        // Handle any required database initialization or setup here
+    } catch (error) {
+        console.error('Error connecting to MongoDB:', error.message);
+    }
+    //  const client = new MongoClient(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
+    //  await client.connect()
+    //     .then(client => {
+    //         console.log('Connected to MongoDB');
+    // // MongoClient.connect(mongoURI, connectOptions)
+    //         // dbClient = client;
+    //         // Handle any required database initialization or setup here
+    //     })
+    //     .catch(err => {
+    //         console.error('Error connecting to MongoDB:', err.message);
+    //     });
 }
 
 // Function to periodically reconnect
